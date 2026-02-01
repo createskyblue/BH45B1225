@@ -2,6 +2,7 @@
  * @file bh45b1225.c
  * @brief BH45B1225 24位Delta-Sigma ADC驱动程序实现
  * @note 基于BH45B1225数据手册 Rev 1.21重新实现
+ * @author createskyblue <createskyblue@outlook.com> 2026
  */
 
 #include "bh45b1225.h"
