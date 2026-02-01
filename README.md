@@ -1,47 +1,47 @@
-[简体中文](README_cn.md)
+[English](README_en.md)
 
-# BH45B1225 Driver
+# BH45B1225 驱动
 
-BH45B1225 is a high-performance 24-bit Delta-Sigma ADC that integrates a programmable gain amplifier (PGA, 1\~128x), 12-bit DAC, temperature sensor, and multiple input channels (4 single-ended / 2 differential). It supports an internal 1.25V reference voltage, configurable via I2C interface, with adjustable data rate (5\~1600Hz), suitable for precision measurement, sensor acquisition, industrial control and other applications.
+BH45B1225 是一款高性价比的 24 位 Delta-Sigma ADC，集成可编程增益放大器（PGA，1\~128 倍）、12 位 DAC、温度传感器和多路输入通道（4 路单端 / 2 路差分）。支持内部 1.25V 基准电压，通过 I2C 接口配置，数据速率可调（5\~1600Hz），适用于精密测量、传感器采集、工业控制等场景。
 
-![数据手册封面](./img/en.png)
+![数据手册封面](./img/cn.png)
 
-## Porting
+## 移植
 
-Implement 3 functions:
+实现 3 个函数：
 
 ```c
-// Write - data format: [register address][data...]
+// 写 - data 格式: [寄存器地址][数据...]
 int bh45b1225_i2c_write(uint8_t dev_addr, const uint8_t *data, uint16_t len) {
     return HAL_I2C_Master_Transmit(&hi2c1, dev_addr, data, len, 1000);
 }
 
-// Read
+// 读
 int bh45b1225_i2c_read(uint8_t dev_addr, uint8_t reg, uint8_t *data, uint16_t len) {
     if (HAL_I2C_Master_Transmit(&hi2c1, dev_addr, &reg, 1, 1000) != HAL_OK) return -1;
     return HAL_I2C_Master_Receive(&hi2c1, dev_addr, data, len, 1000);
 }
 
-// Delay
+// 延时
 void bh45b1225_delay_ms(uint32_t ms) {
     HAL_Delay(ms);
 }
 ```
 
-## Usage
+## 使用
 
 ```c
 bh45b1225_dev_t sensor;
 
-// Initialize (8-bit address, e.g. 0xD0)
+// 初始化（8位地址，如 0xD0）
 bh45b1225_init(&sensor, 0xD0, bh45b1225_i2c_write, bh45b1225_i2c_read, bh45b1225_delay_ms);
 
-// Configure differential input (AN0-AN1)
+// 配置差分输入 (AN0-AN1)
 bh45b1225_set_input_channel(&sensor, BH45B1225_IN1_AN0, BH45B1225_IN2_AN1);
 bh45b1225_reset_adc_filter(&sensor);
 bh45b1225_start_conversion(&sensor);
 
-// Read
+// 读取
 while (1) {
     bool complete;
     if (bh45b1225_check_eoc(&sensor, &complete) == 0 && complete) {
@@ -56,206 +56,175 @@ while (1) {
 
 ## API
 
-### Basic Functions
-| Function | Description |
-|----------|-------------|
-| `bh45b1225_init()` | Initialize device |
-| `bh45b1225_set_vcm()` | Enable/disable VCM |
-| `bh45b1225_set_vref_source()` | Set ADC reference voltage source (internal/external) |
+### 基础函数
+| 函数 | 功能 |
+|------|------|
+| `bh45b1225_init()` | 初始化设备 |
+| `bh45b1225_set_vcm()` | 使能/除能 VCM |
+| `bh45b1225_set_vref_source()` | 设置 ADC 参考电压源 (内部/外部) |
 
-### Input & Gain Configuration
-| Function | Description |
-|----------|-------------|
-| `bh45b1225_set_input_channel()` | Configure input channels (IN1/IN2) |
-| `bh45b1225_set_inx_polarity()` | Set input polarity via INX bits |
-| `bh45b1225_set_pga_gain()` | Set PGA total gain (1~128) |
+### 输入与增益配置
+| 函数 | 功能 |
+|------|------|
+| `bh45b1225_set_input_channel()` | 配置输入通道 (IN1/IN2) |
+| `bh45b1225_set_inx_polarity()` | 通过 INX 位交换输入极性 |
+| `bh45b1225_set_pga_gain()` | 设置 PGA 总增益 (1~128) |
 
-### Clock & Oscillator
-| Function | Description |
-|----------|-------------|
-| `bh45b1225_enable_hirc()` | Enable HIRC internal oscillator |
-| `bh45b1225_check_hirc_stable()` | Check if HIRC oscillator is stable |
+### 时钟与振荡器
+| 函数 | 功能 |
+|------|------|
+| `bh45b1225_enable_hirc()` | 使能 HIRC 内部振荡器 |
+| `bh45b1225_check_hirc_stable()` | 检查 HIRC 振荡器是否稳定 |
 
-### ADC Configuration
-| Function | Description |
-|----------|-------------|
-| `bh45b1225_set_data_rate()` | Set ADC output data rate (5~1600Hz) |
-| `bh45b1225_set_adc_mode()` | Set ADC work mode (normal/sleep/poweroff) |
-| `bh45b1225_set_vref_buffer()` | Enable/disable reference voltage buffers |
+### ADC 配置
+| 函数 | 功能 |
+|------|------|
+| `bh45b1225_set_data_rate()` | 设置 ADC 输出数据速率 (5~1600Hz) |
+| `bh45b1225_set_adc_mode()` | 设置 ADC 工作模式 (正常/休眠/掉电) |
+| `bh45b1225_set_vref_buffer()` | 使能/除能参考电压缓存 |
 
-### ADC Operations
-| Function | Description |
-|----------|-------------|
-| `bh45b1225_reset_adc_filter()` | Reset ADC filter |
-| `bh45b1225_set_data_latch()` | Enable/disable data latch |
-| `bh45b1225_start_conversion()` | Start ADC conversion |
-| `bh45b1225_check_eoc()` | Check if conversion is complete |
-| `bh45b1225_read_data()` | Read 24-bit ADC result |
-| `bh45b1225_clear_eoc()` | Clear EOC flag |
+### ADC 操作
+| 函数 | 功能 |
+|------|------|
+| `bh45b1225_reset_adc_filter()` | 复位 ADC 滤波器 |
+| `bh45b1225_set_data_latch()` | 使能/除能数据锁存 |
+| `bh45b1225_start_conversion()` | 启动 ADC 转换 |
+| `bh45b1225_check_eoc()` | 检查转换是否完成 |
+| `bh45b1225_read_data()` | 读取 24 位 ADC 结果 |
+| `bh45b1225_clear_eoc()` | 清除 EOC 标志 |
 
-### DAC Operations
-| Function | Description |
-|----------|-------------|
-| `bh45b1225_set_dac_enable()` | Enable/disable DAC |
-| `bh45b1225_set_dac_vref()` | Set DAC reference voltage source (AVDD/VCM) |
-| `bh45b1225_set_dac_output()` | Set DAC output value (12-bit, 0-4095) |
+### DAC 操作
+| 函数 | 功能 |
+|------|------|
+| `bh45b1225_set_dac_enable()` | 使能/除能 DAC |
+| `bh45b1225_set_dac_vref()` | 设置 DAC 参考电压源 (AVDD/VCM) |
+| `bh45b1225_set_dac_output()` | 设置 DAC 输出值 (12 位, 0-4095) |
 
-### Utility Functions
-| Function | Description |
-|----------|-------------|
-| `bh45b1225_code_to_voltage()` | Convert ADC code to voltage |
+### 工具函数
+| 函数 | 功能 |
+|------|------|
+| `bh45b1225_code_to_voltage()` | 将 ADC 码转换为电压 |
 
-### Advanced Configuration (Use with caution)
-| Function | Description |
-|----------|-------------|
-| `bh45b1225_set_pwrc_opt()` | Set PWRC optimization bits |
-| `bh45b1225_set_adcte()` | Set ADC test configuration register |
-| `bh45b1225_set_filter_mode()` | Set ADC filter mode (FLMS) |
-| `bh45b1225_set_osr()` | Set ADC oversampling rate (OSR) |
-| `bh45b1225_set_clock_div()` | Set ADC clock division |
+### 高级配置（谨慎使用）
+| 函数 | 功能 |
+|------|------|
+| `bh45b1225_set_pwrc_opt()` | 设置 PWRC 优化位 |
+| `bh45b1225_set_adcte()` | 设置 ADC 测试配置寄存器 |
+| `bh45b1225_set_filter_mode()` | 设置 ADC 滤波器模式 (FLMS) |
+| `bh45b1225_set_osr()` | 设置 ADC 过采样率 (OSR) |
+| `bh45b1225_set_clock_div()` | 设置 ADC 时钟分频 |
 
-## Understanding Common-Mode Voltage and Input Configuration
-
-### 1 Definition of Common-Mode Voltage
-
-The BH45B1225 is a differential input ADC. Its core measurement object is the voltage difference between the positive input pin (INP) and the negative input pin (INN), calculated as follows:
-
+# 理解共模电压与输入配置
+## 1 共模电压的定义
+BH45B1225 为差分输入型 ADC，其核心测量对象为正输入引脚（INP）与负输入引脚（INN）之间的电压差值，计算公式如下：
 $$V_{\text{diff}} = V_{\text{INP}} - V_{\text{INN}}$$
 
-In a differential measurement system, the average of the absolute voltages of the two input pins relative to the ADC ground is defined as the **common-mode voltage**, expressed mathematically as:
-
+在差分测量体系中，两个输入引脚相对于 ADC 地的绝对电压平均值，被定义为**共模电压**，其数学表达式为：
 $$V_{\text{CM}} = \frac{V_{\text{INP}} + V_{\text{INN}}}{2}$$
 
-> **Note**: The "$V_{\text{CM}}$" mentioned here refers to the physical concept of common-mode voltage and must be strictly distinguished from the chip's VCM pin (internal reference voltage output pin).
+> **注意事项**：本文所提及的“$V_{\text{CM}}$”为共模电压的物理概念，需与芯片的 VCM 引脚（内部基准电压输出引脚）严格区分。
 
-### 2 Common-Mode Voltage Limits of BH45B1225
-
-The common-mode voltage input range of the BH45B1225 is determined by the analog supply voltage (AVDD). The device datasheet explicitly specifies its effective range as:
-
+## 2 BH45B1225 共模电压限制
+BH45B1225 的共模电压输入范围由模拟电源电压（AVDD）决定，器件手册明确规定其有效范围为：
 $$\boldsymbol{0.4\,\text{V} \le V_{\text{CM}} \le (AVDD - 0.95)\,\text{V}}$$
 
-The common-mode voltage ranges corresponding to different AVDD conditions are shown in Table 1.
+不同 AVDD 条件下对应的共模电压范围如表 1 所示。
+**表 1 不同 AVDD 对应的共模电压范围**
 
-**Table 1: Common-Mode Voltage Range for Different AVDD Values**
+| AVDD（V） | 共模电压范围（V） |
+|-----------|------------------|
+| 2.5       | 0.4 ~ 1.55       |
+| 3.3       | 0.4 ~ 2.35       |
 
-| AVDD (V) | Common-Mode Voltage Range (V) |
-|----------|-------------------------------|
-| 2.5      | 0.4 ~ 1.55                    |
-| 3.3      | 0.4 ~ 2.35                    |
+当共模电压超出规定范围时，ADC 转换精度将显著下降；若长期或严重超出输入绝对最大额定值，可能存在器件可靠性甚至永久失效的风险。
 
-When the common-mode voltage exceeds the specified range, the ADC conversion accuracy will significantly decrease. If it long-term or severely exceeds the input absolute maximum ratings, there may be risks to device reliability or even permanent failure.
+为保障共模电压处于有效区间，芯片内置 1.25V 带隙基准源，通过 VCM 引脚输出稳定电压，VCM 引脚由芯片内部带隙基准产生，在手册规定的 AVDD 工作范围内保持相对稳定，与 AVDD 变化弱相关，可作为差分测量的中间参考点。在实际应用中，**推荐优先使用 VCM 引脚作为参考，而非直接接地**。
 
-To ensure the common-mode voltage stays within the valid range, the chip has a built-in 1.25V bandgap reference that outputs a stable voltage through the VCM pin. The VCM pin is generated by the chip's internal bandgap reference and remains relatively stable within the AVDD operating range specified in the datasheet. It is weakly correlated with AVDD variations and can serve as an intermediate reference point for differential measurements. In practical applications, **it is recommended to prioritize using the VCM pin as a reference rather than directly connecting to ground**.
+## 3 单端测量配置
+### 3.1 硬件接线
+单端测量模式下，硬件接线需遵循以下规范：
+1.  待测模拟信号接入正输入引脚 INP（可选用 AN0~AN3 任意通道，本文以 AN1 为例）
+2.  负输入引脚 INN 直接连接至芯片 VCM 引脚
+3.  信号源地与芯片 VCM 引脚相连，信号源地应参考 VCM 引脚，不应直接与 ADC 地形成直流参考关系
 
-### 3 Single-Ended Measurement Configuration
+### 3.2 工作原理
+单端测量时，ADC 实际测量值为待测信号与 VCM 引脚电压的差值，即：
+$$V_{\text{测量值}} = V_{\text{AN1}} - V_{\text{VCM}}$$
 
-#### 3.1 Hardware Connection
+由于 VCM 引脚电压（典型值 1.25V，±5%误差）处于 ADC 共模电压有效范围的中间区间，可确保 INP 与 INN 引脚的绝对电压均满足器件输入要求。
 
-In single-ended measurement mode, hardware connections must follow these specifications:
+### 3.3 验证方法
+使用万用表进行共模电压验证，步骤如下：
+1.  测量 AN1 与 VCM 引脚之间的电压，该值应与信号源输出电压一致
+2.  分别测量 AN1 对地电压 $V_{\text{AN1-GND}}$ 和 VCM 对地电压 $V_{\text{VCM-GND}}$
+3.  根据公式 $V_{\text{CM}} = \frac{V_{\text{AN1-GND}} + V_{\text{VCM-GND}}}{2}$ 计算实际共模电压
+4.  核对计算值是否符合表 1 规定的范围
 
-1. Connect the measured analog signal to the positive input pin INP (any channel from AN0~AN3 can be selected; this document uses AN1 as an example)
-2. Connect the negative input pin INN directly to the chip's VCM pin
-3. Connect the signal source ground to the chip's VCM pin. The signal source should reference the VCM pin and should not form a DC reference relationship directly with ADC ground
+> **常见错误分析**：在 INN 接地、INP 为单端信号的情况下，共模电压为信号电压的一半。当待测信号电压较低时，共模电压易低于 0.4V 的下限阈值，引发 ADC 转换数据失真或不稳定。
 
-#### 3.2 Working Principle
+## 4 差分测量配置
+### 4.1 硬件接线
+差分测量模式下，硬件接线规范如下：
+1.  信号源正极接入 INP 引脚（本文以 AN1 为例）
+2.  信号源负极接入 INN 引脚（本文以 AN2 为例）
+3.  若共模电压超出有效范围，可通过 1kΩ~100kΩ 的电阻（阻值由信号源阻抗决定）将信号源地连接至 VCM 引脚，实现共模电平偏移
 
-In single-ended measurement, the actual measured value of the ADC is the difference between the measured signal and the VCM pin voltage:
-
-$$V_{\text{measured}} = V_{\text{AN1}} - V_{\text{VCM}}$$
-
-Since the VCM pin voltage (typical value 1.25V, ±5% tolerance) is in the middle of the ADC's common-mode voltage effective range, it ensures that the absolute voltages of both INP and INN pins meet the device input requirements.
-
-#### 3.3 Verification Method
-
-Use a multimeter to verify the common-mode voltage with the following steps:
-
-1. Measure the voltage between AN1 and the VCM pin; this value should be consistent with the signal source output voltage
-2. Measure the AN1-to-ground voltage $V_{\text{AN1-GND}}$ and the VCM-to-ground voltage $V_{\text{VCM-GND}}$ separately
-3. Calculate the actual common-mode voltage using the formula $V_{\text{CM}} = \frac{V_{\text{AN1-GND}} + V_{\text{VCM-GND}}}{2}$
-4. Verify that the calculated value complies with the range specified in Table 1
-
-> **Common Error Analysis**: In the case of INN connected to ground and INP as a single-ended signal, the common-mode voltage is half of the signal voltage. When the measured signal voltage is low, the common-mode voltage easily falls below the 0.4V lower threshold, causing ADC conversion data distortion or instability.
-
-### 4 Differential Measurement Configuration
-
-#### 4.1 Hardware Connection
-
-In differential measurement mode, hardware connection specifications are as follows:
-
-1. Connect the signal source positive terminal to the INP pin (this document uses AN1 as an example)
-2. Connect the signal source negative terminal to the INN pin (this document uses AN2 as an example)
-3. If the common-mode voltage exceeds the effective range, you can connect the signal source ground to the VCM pin through a 1kΩ~100kΩ resistor (value determined by signal source impedance) to achieve common-mode level shifting
-
-#### 4.2 Working Principle
-
-In differential measurement mode, the ADC output value is the voltage difference between the two input pins:
-
+### 4.2 工作原理
+差分测量模式下，ADC 输出值为两个输入引脚的电压差值：
 $$V_{\text{diff}} = V_{\text{AN1}} - V_{\text{AN2}}$$
 
-**Key Principle**: In differential measurement, besides ensuring the differential voltage is within range, you must also ensure that the common-mode voltage of both input pins meets the 0.4V ~ (AVDD-0.95)V range requirement.
+**关键原则**：差分测量中，除需保证差分电压在量程内，还需确保两个输入引脚的共模电压满足 0.4V ~ (AVDD-0.95)V 的范围要求。
 
-#### 4.3 Verification Method
+### 4.3 验证方法
+1.  使用万用表分别测量 AN1 对地电压 $V_{\text{AN1-GND}}$、AN2 对地电压 $V_{\text{AN2-GND}}$、AN1 对 AN2 的差分电压
+2.  计算实际共模电压：$V_{\text{CM}} = \frac{V_{\text{AN1-GND}} + V_{\text{AN2-GND}}}{2}$
+3.  若共模电压超出范围，需通过外接电阻进行电平偏移调整
 
-1. Use a multimeter to separately measure the AN1-to-ground voltage $V_{\text{AN1-GND}}$, the AN2-to-ground voltage $V_{\text{AN2-GND}}$, and the AN1-to-AN2 differential voltage
-2. Calculate the actual common-mode voltage: $V_{\text{CM}} = \frac{V_{\text{AN1-GND}} + V_{\text{AN2-GND}}}{2}$
-3. If the common-mode voltage is out of range, you need to perform level shifting adjustment through external resistors
+> **重要提示**：即使差分电压的波形在示波器观测中表现正常，若共模电压超出器件允许范围，ADC 仍会输出错误数据。
 
-> **Important Note**: Even if the differential voltage waveform appears normal when observed with an oscilloscope, if the common-mode voltage exceeds the device's allowable range, the ADC will still output incorrect data.
+## 5 不同接地方式的差分测量实战分析
+测试条件：AVDD = 3.3V，共模电压有效范围 0.4V ~ 2.35V；信号源输出差分电压 1V；INP=AN1，INN=AN2。
 
-### 5 Practical Analysis of Differential Measurement with Different Grounding Methods
+### 5.1 配置一：浮地（信号地与芯片地无连接）
+**现象**：ADC 输出数据剧烈波动，无稳定有效值。
+**原理分析**：信号地悬空时，共模电压处于未定义状态，外部电磁干扰易耦合至输入引脚，导致 AN1、AN2 引脚的绝对电压随机漂移。尽管差分电压理论值为 1V，但 ADC 内部电路无法锁定有效差值，最终输出噪声数据。
 
-Test conditions: AVDD = 3.3V, common-mode voltage effective range 0.4V ~ 2.35V; signal source output differential voltage 1V; INP=AN1, INN=AN2.
+### 5.2 配置二：信号地连接芯片地（GND）
+**现象**：可稳定测量正差分电压，无法测量负差分电压。
+**数据分析**：不同信号源设置下的测试数据如表 2 所示。
 
-#### 5.1 Configuration 1: Floating Ground (No Connection Between Signal Ground and Chip Ground)
+**表 2 信号地接 GND 的测试数据**
 
-**Phenomenon**: ADC output data fluctuates violently with no stable effective values.
+| 信号源设置 | 信号+对地电压（V） | 信号-对地电压（V） | 差分电压（V） | 共模电压（V） | 测量结果 |
+|------------|--------------------|--------------------|---------------|---------------|----------|
+| +1.0V      | 1.0                | 0                  | 1             | 0.5           | 正常     |
+| +0.2V      | 0.2                | 0                  | 0.2           | 0.1           | 超出范围 |
+| -1.0V      | -1.0               | 0                  | -1            | -0.5          | 超出范围 |
 
-**Principle Analysis**: When the signal ground is floating, the common-mode voltage is in an undefined state. External electromagnetic interference easily couples into the input pins, causing the absolute voltages of AN1 and AN2 pins to drift randomly. Although the differential voltage theoretically is 1V, the ADC internal circuitry cannot lock onto an effective differential value, ultimately outputting noise data.
+**问题分析**：当测量负差分电压时，信号+引脚电压变为负值，超出 ADC 输入电压范围（尽管器件允许一定范围的输入摆幅，但前提是各输入引脚的绝对电压与共模电压需同时满足限制条件），导致转换失效。
 
-#### 5.2 Configuration 2: Signal Ground Connected to Chip Ground (GND)
+### 5.3 配置三：信号地连接芯片 VCM 引脚
+**现象**：正负差分电压均可实现高精度测量。
+**前提条件**：VCM 引脚输出典型值 1.25V（±5%误差）的稳定电压，该电压相对于芯片地保持恒定；外部信号源地直接连接至 VCM 引脚。
+**数据分析**：不同信号源设置下的测试数据如表 3 所示。
 
-**Phenomenon**: Can stably measure positive differential voltages, but cannot measure negative differential voltages.
+**表 3 信号地接 VCM 引脚的测试数据**
 
-**Data Analysis**: Test data under different signal source settings are shown in Table 2.
+| 信号源设置 | 信号-对地电压（V） | 信号+对地电压（V） | 差分电压（V） | 共模电压（V） | 测量结果 |
+|------------|--------------------|--------------------|---------------|---------------|----------|
+| +1.0V      | 1.25               | 2.25               | 1             | 1.75          | 正常     |
+| -1.0V      | 1.25               | 0.25               | -1            | 0.75          | 正常     |
 
-**Table 2: Test Data with Signal Ground Connected to GND**
+**优势分析**：待测信号围绕 VCM 引脚电压（1.25V）上下波动，无论输入正、负差分电压，信号+与信号-引脚的绝对电压均处于 ADC 允许的输入范围内，实现真正的双极性测量。
 
-| Signal Source Setting | Signal+ to Ground Voltage (V) | Signal- to Ground Voltage (V) | Differential Voltage (V) | Common-Mode Voltage (V) | Measurement Result |
-|------------------------|-------------------------------|-------------------------------|--------------------------|--------------------------|---------------------|
-| +1.0V                  | 1.0                           | 0                             | 1                        | 0.5                      | Normal              |
-| +0.2V                  | 0.2                           | 0                             | 0.2                      | 0.1                      | Out of Range        |
-| -1.0V                  | -1.0                          | 0                             | -1                       | -0.5                     | Out of Range        |
+## 6 总结
+差分 ADC 的输入特性由单个引脚的绝对电压范围和引脚间的差分电压范围共同决定，不同参考方式的测量能力对比见表 4。
 
-**Problem Analysis**: When measuring negative differential voltages, the signal+ pin voltage becomes negative, exceeding the ADC input voltage range (although the device allows a certain range of input swing, provided that the absolute voltages of each input pin and the common-mode voltage simultaneously meet the limit conditions), leading to conversion failure.
+**表 4 不同参考方式的测量能力对比**
 
-#### 5.3 Configuration 3: Signal Ground Connected to Chip VCM Pin
+| 参考方式       | 测量能力               | 技术说明                                                 |
+|----------------|------------------------|----------------------------------------------------------|
+| 地参考（配置二） | 仅能测量正差分电压     | 测量负电压时，信号+引脚电压低于 0V，超出 ADC 输入范围     |
+| VCM 参考（配置三） | 可测量正负差分电压     | 信号围绕 VCM 引脚电压波动，始终满足共模电压范围要求       |
 
-**Phenomenon**: Both positive and negative differential voltages can be measured with high precision.
-
-**Prerequisites**: The VCM pin outputs a stable voltage with a typical value of 1.25V (±5% tolerance). This voltage remains constant relative to the chip ground. The external signal source ground is connected directly to the VCM pin.
-
-**Data Analysis**: Test data under different signal source settings are shown in Table 3.
-
-**Table 3: Test Data with Signal Ground Connected to VCM Pin**
-
-| Signal Source Setting | Signal- to Ground Voltage (V) | Signal+ to Ground Voltage (V) | Differential Voltage (V) | Common-Mode Voltage (V) | Measurement Result |
-|------------------------|-------------------------------|-------------------------------|--------------------------|--------------------------|---------------------|
-| +1.0V                  | 1.25                          | 2.25                          | 1                        | 1.75                     | Normal              |
-| -1.0V                  | 1.25                          | 0.25                          | -1                       | 0.75                     | Normal              |
-
-**Advantage Analysis**: The measured signal fluctuates around the VCM pin voltage (1.25V). Whether inputting positive or negative differential voltages, the absolute voltages of signal+ and signal- pins are both within the ADC's allowable input range, achieving true bipolar measurement capability.
-
-### 6 Summary
-
-The input characteristics of a differential ADC are jointly determined by the absolute voltage range of individual pins and the differential voltage range between pins. A comparison of measurement capabilities for different reference methods is shown in Table 4.
-
-**Table 4: Comparison of Measurement Capabilities for Different Reference Methods**
-
-| Reference Method       | Measurement Capability       | Technical Description                                                                 |
-|------------------------|------------------------------|---------------------------------------------------------------------------------------|
-| Ground reference (Configuration 2) | Can only measure positive differential voltages | When measuring negative voltages, the signal+ pin voltage is below 0V, exceeding the ADC input range |
-| VCM reference (Configuration 3)   | Can measure positive and negative differential voltages | Signal fluctuates around the VCM pin voltage, always meeting common-mode voltage range requirements |
-
-**Application Recommendation**: For scenarios requiring bipolar voltage measurement such as bridge sensors and audio signals, the VCM pin must be used as the reference ground to ensure measurement accuracy and stability.
-
-
+**应用建议**：对于电桥传感器、音频信号等需要双极性电压测量的场景，必须采用 VCM 引脚作为参考地，以保障测量精度与稳定性。
