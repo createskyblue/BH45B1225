@@ -58,7 +58,10 @@ int bh45b1225_init(bh45b1225_dev_t *dev, uint8_t dev_addr_func,
     dev->delay_func(10);
 
     bool hirc_stable = false;
-    bh45b1225_check_hirc_stable(dev, &hirc_stable);
+    ret = bh45b1225_check_hirc_stable(dev, &hirc_stable);
+    if (ret != 0) {
+        return ret;  // 通信失败
+    }
     if (!hirc_stable) {
         return -1;  // HIRC 不稳定
     }
