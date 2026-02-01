@@ -116,88 +116,146 @@ while (1) {
 
 ## Understanding Common-Mode Voltage and Input Configuration
 
-### What is Common-Mode Voltage
+### 1 Definition of Common-Mode Voltage
 
-The most important thing to understand about this ADC is that it **only measures the voltage difference** between its two input pins, INP (positive input) and INN (negative input). The conversion result is Vdiff = VINP - VINN, nothing more and nothing less. However, while the ADC outputs this difference, the internal circuitry must still process the absolute voltage level of both pins relative to the ADC ground. This absolute level is what we call the common-mode voltage (don't confuse this with the chip's VCM pin), calculated as V_cm = (VINP + VINN) / 2.
+The BH45B1225 is a differential input ADC. Its core measurement object is the voltage difference between the positive input pin (INP) and the negative input pin (INN), calculated as follows:
 
-Think of it this way: if you have two people standing on different steps of a staircase, the differential voltage is the height difference between them, while the common-mode voltage is the average height of the step they're standing on from the floor. The ADC cares about both - it needs to know the difference (that's your measurement), but it also needs both inputs to be at absolute voltage levels that its internal circuitry can handle.
+$$V_{\text{diff}} = V_{\text{INP}} - V_{\text{INN}}$$
 
-### Common-Mode Voltage Limits of BH45B1225
+In a differential measurement system, the average of the absolute voltages of the two input pins relative to the ADC ground is defined as the **common-mode voltage**, expressed mathematically as:
 
-The BH45B1225 has strict limits on the common-mode voltage range, which depends on your supply voltage and reference voltage configuration. If the common-mode voltage falls outside this allowable range, the ADC cannot accurately process the signals, resulting in incorrect readings or potential chip damage. This is why the chip provides a dedicated VCM pin (this is a physical pin name), which outputs AVDD/2 (for example, when AVDD=2.5V, the VCM pin outputs 1.25V), serving as a safe "middle ground" reference for your measurements. We strongly recommend using this VCM pin instead of ground for your reference connection.
+$$V_{\text{CM}} = \frac{V_{\text{INP}} + V_{\text{INN}}}{2}$$
 
-### Single-Ended Measurement Configuration
+> **Note**: The "$V_{\text{CM}}$" mentioned here refers to the physical concept of common-mode voltage and must be strictly distinguished from the chip's VCM pin (internal reference voltage output pin).
 
-For single-ended measurements, you need to configure INP to AN1 (your signal) and INN to the chip's VCM pin, then connect your signal source to AN1 and your signal ground to the VCM pin (not to ADC ground!). This configuration works because the ADC measures VINP - VINN = AN1_voltage - VCM_pin_voltage, which gives you your actual signal voltage. Crucially, this keeps both inputs within the acceptable common-mode range since the VCM pin sits at the middle of the ADC's valid input range.
+### 2 Common-Mode Voltage Limits of BH45B1225
 
-**We strongly recommend verifying your setup with a multimeter before trusting the ADC readings:** Measure the voltage between AN1 and VCM (this should match your signal), then measure AN1-to-GND and VCM-to-GND separately. Calculate the common-mode voltage manually as (V_AN1_GND + V_VCM_GND) / 2 and verify it's within the chip's specified range. If you instead connect INN directly to ground, the common-mode voltage becomes approximately half of your signal voltage, which may be too low for the ADC to handle properly, especially with small signals near ground. Many beginners make this mistake and wonder why their readings are inaccurate or unstable - the ADC simply cannot operate correctly when the common-mode voltage is out of range.
+The common-mode voltage input range of the BH45B1225 is determined by the analog supply voltage (AVDD). The device datasheet explicitly specifies its effective range as:
 
-### Differential Measurement Configuration
+$$\boldsymbol{0.4\,\text{V} \le V_{\text{CM}} \le (AVDD - 0.95)\,\text{V}}$$
 
-For differential measurements, configure INP to AN1 and INN to AN2, then connect your two signal sources to these pins. The ADC will output the difference between them: Vdiff = VAN1 - VAN2. However, even in differential mode, both signal sources must have a common-mode voltage that falls within the ADC's allowable range. This is where many users encounter problems: if you're using a bridge sensor powered by 5V where both outputs sit around 2.5V, this common-mode level might be acceptable, but if your sensor is powered from a different voltage or has an offset, you may need to shift the signals into the valid range.
+The common-mode voltage ranges corresponding to different AVDD conditions are shown in Table 1.
 
-**Always verify with a multimeter:** Measure AN1-to-GND, AN2-to-GND, and AN1-to-AN2 voltages, then calculate the actual common-mode voltage as (V_AN1_GND + V_AN2_GND) / 2. If this value is outside the specified range, you need to connect one of your signal sources to VCM through an appropriate resistor (typically in the range of 1kΩ to 100kΩ, depending on your signal source impedance) to shift the common-mode level. Alternatively, redesign your signal conditioning circuit to reference both signals to VCM. Many differential measurement failures stem from ignoring the common-mode voltage requirement - the ADC will output garbage data even though the differential signal itself looks perfect on an oscilloscope, because the internal circuitry cannot handle the absolute voltage levels present at the inputs.
+**Table 1: Common-Mode Voltage Range for Different AVDD Values**
 
-### Practical Example: Differential Measurement with Different Ground Connections
+| AVDD (V) | Common-Mode Voltage Range (V) |
+|----------|-------------------------------|
+| 2.5      | 0.4 ~ 1.55                    |
+| 3.3      | 0.4 ~ 2.35                    |
 
-Let's walk through a concrete example to illustrate why proper common-mode voltage matters. Suppose you have a signal source with differential outputs (positive and negative) and you set it to output 1V. Configure INP to AN1 and INN to AN2, then connect AN1 to the signal positive and AN2 to the signal negative. Now let's observe what happens with three different grounding configurations.
+When the common-mode voltage exceeds the specified range, the ADC conversion accuracy will significantly decrease. If it long-term or severely exceeds the input absolute maximum ratings, there may be risks to device reliability or even permanent failure.
 
-**Configuration 1: Floating ground (no connection between signal ground and chip ground)**
-In this setup, the signal ground is not connected to anything - it's floating relative to the ADC chip. You'll observe that the ADC readings fluctuate wildly and are completely unstable. This happens because the common-mode voltage is floating and undefined. External electromagnetic interference couples into the floating wires, causing the absolute voltage levels of both AN1 and AN2 to drift unpredictably. Even though the differential signal (the voltage difference between them) is still 1V, the ADC cannot lock onto this difference because its internal circuitry relies on stable common-mode voltage to function. The floating common-mode voltage wanders outside the ADC's valid operating range, so the output is essentially random noise.
+To ensure the common-mode voltage stays within the valid range, the chip has a built-in 1.25V bandgap reference that outputs a stable voltage through the VCM pin. The VCM pin is generated by the chip's internal bandgap reference and remains relatively stable within the AVDD operating range specified in the datasheet. It is weakly correlated with AVDD variations and can serve as an intermediate reference point for differential measurements. In practical applications, **it is recommended to prioritize using the VCM pin as a reference rather than directly connecting to ground**.
 
-**Configuration 2: Signal ground connected to chip ground (GND)**
+### 3 Single-Ended Measurement Configuration
 
-Now connect your signal ground to the ADC chip's GND pin. You'll notice that the interference instantly disappears and the readings become stable - the ADC correctly measures close to 1V. But let's look at the actual numbers:
+#### 3.1 Hardware Connection
 
-When the signal source is set to +1V, signal+ to chip ground is 1.0V, signal- to chip ground is 0V. The common-mode voltage = (1.0V + 0V) / 2 = 0.5V. While this works for positive signals, if you try to measure negative voltages (for example, set the signal source to output -1V), signal+ to chip ground needs to be -1V, signal- to chip ground is 0V. The common-mode voltage = (-1V + 0V) / 2 = -0.5V, and signal+ = -1V is already outside the ADC's input range (ADC cannot measure negative voltages).
+In single-ended measurement mode, hardware connections must follow these specifications:
 
-**Configuration 3: Signal ground connected to chip VCM pin (NOT chip GND)**
+1. Connect the measured analog signal to the positive input pin INP (any channel from AN0~AN3 can be selected; this document uses AN1 as an example)
+2. Connect the negative input pin INN directly to the chip's VCM pin
+3. Connect the signal source ground to the chip's VCM pin. The signal source should reference the VCM pin and should not form a DC reference relationship directly with ADC ground
 
-Finally, disconnect the signal ground from chip GND and connect it to the chip's VCM pin instead (in our test setup, the VCM pin outputs 1.25V). You'll observe that for positive signals (like the original 1V example), the ADC still measures accurately, just like in Configuration 2. But now something magical happens: when you apply negative differential voltages, the ADC correctly measures them!
+#### 3.2 Working Principle
 
-Let's use the actual measured values from your tests to illustrate. In the test, the VCM pin outputs 1.25V (relative to chip ground, this value doesn't change), and the external signal source's ground is connected to the VCM pin.
+In single-ended measurement, the actual measured value of the ADC is the difference between the measured signal and the VCM pin voltage:
 
-**When the signal source is set to +1V:**
+$$V_{\text{measured}} = V_{\text{AN1}} - V_{\text{VCM}}$$
 
-- Signal- (connected to VCM) to chip ground: 1.25V
-- Signal+ to chip ground: 2.25V
-- Differential voltage: 2.25V - 1.25V = 1V
-- Common-mode voltage: (2.25V + 1.25V) / 2 = 1.75V
-- Both pin voltages are within the ADC's allowable range ✓
+Since the VCM pin voltage (typical value 1.25V, ±5% tolerance) is in the middle of the ADC's common-mode voltage effective range, it ensures that the absolute voltages of both INP and INN pins meet the device input requirements.
 
-**When the signal source is set to -1V:**
+#### 3.3 Verification Method
 
-- Signal- (connected to VCM) to chip ground: 1.25V
-- Signal+ to chip ground: 0.25V
-- Differential voltage: 0.25V - 1.25V = -1V
-- Common-mode voltage: (0.25V + 1.25V) / 2 = 0.75V
-- Both pin voltages are still within the ADC's allowable range ✓
+Use a multimeter to verify the common-mode voltage with the following steps:
 
-Compare this with Configuration 2 (signal ground connected to GND, assuming GND=0V):
+1. Measure the voltage between AN1 and the VCM pin; this value should be consistent with the signal source output voltage
+2. Measure the AN1-to-ground voltage $V_{\text{AN1-GND}}$ and the VCM-to-ground voltage $V_{\text{VCM-GND}}$ separately
+3. Calculate the actual common-mode voltage using the formula $V_{\text{CM}} = \frac{V_{\text{AN1-GND}} + V_{\text{VCM-GND}}}{2}$
+4. Verify that the calculated value complies with the range specified in Table 1
 
-**When the signal source is set to +1V:**
+> **Common Error Analysis**: In the case of INN connected to ground and INP as a single-ended signal, the common-mode voltage is half of the signal voltage. When the measured signal voltage is low, the common-mode voltage easily falls below the 0.4V lower threshold, causing ADC conversion data distortion or instability.
 
-- Signal+ to chip ground: 1.0V
-- Signal- to chip ground: 0V
-- Differential voltage: 1V - 0V = 1V
-- Common-mode voltage: (1.0V + 0V) / 2 = 0.5V
-- Works fine, measurement is accurate ✓
+### 4 Differential Measurement Configuration
 
-**When the signal source is set to -1V:**
+#### 4.1 Hardware Connection
 
-- Signal+ to chip ground: -1V (already outside ADC input range ✗)
-- Signal- to chip ground: 0V
-- Differential voltage: -1V - 0V = -1V
-- Common-mode voltage: (-1V + 0V) / 2 = -0.5V
-- Signal+ is already negative, outside the ADC's input range, cannot measure ✗
+In differential measurement mode, hardware connection specifications are as follows:
 
-**Why does this matter?**
+1. Connect the signal source positive terminal to the INP pin (this document uses AN1 as an example)
+2. Connect the signal source negative terminal to the INN pin (this document uses AN2 as an example)
+3. If the common-mode voltage exceeds the effective range, you can connect the signal source ground to the VCM pin through a 1kΩ~100kΩ resistor (value determined by signal source impedance) to achieve common-mode level shifting
 
-Differential ADCs have input range limits on each individual pin, not just for the differential voltage between them.
+#### 4.2 Working Principle
 
-- With ground reference in Configuration 2, you can measure positive differential voltages, but cannot measure negative differential voltages (because that would require one pin to go negative)
-- With VCM pin reference in Configuration 3, the signal swings around VCM (1.25V). Whether it's +1V or -1V, the absolute voltages of signal+ and signal- are both between 0V and 2.5V, staying within the ADC's allowable range, achieving true bipolar measurement capability
+In differential measurement mode, the ADC output value is the voltage difference between the two input pins:
 
-This is why applications like bridge sensors and audio signals must use the VCM pin as reference.
+$$V_{\text{diff}} = V_{\text{AN1}} - V_{\text{AN2}}$$
+
+**Key Principle**: In differential measurement, besides ensuring the differential voltage is within range, you must also ensure that the common-mode voltage of both input pins meets the 0.4V ~ (AVDD-0.95)V range requirement.
+
+#### 4.3 Verification Method
+
+1. Use a multimeter to separately measure the AN1-to-ground voltage $V_{\text{AN1-GND}}$, the AN2-to-ground voltage $V_{\text{AN2-GND}}$, and the AN1-to-AN2 differential voltage
+2. Calculate the actual common-mode voltage: $V_{\text{CM}} = \frac{V_{\text{AN1-GND}} + V_{\text{AN2-GND}}}{2}$
+3. If the common-mode voltage is out of range, you need to perform level shifting adjustment through external resistors
+
+> **Important Note**: Even if the differential voltage waveform appears normal when observed with an oscilloscope, if the common-mode voltage exceeds the device's allowable range, the ADC will still output incorrect data.
+
+### 5 Practical Analysis of Differential Measurement with Different Grounding Methods
+
+Test conditions: AVDD = 3.3V, common-mode voltage effective range 0.4V ~ 2.35V; signal source output differential voltage 1V; INP=AN1, INN=AN2.
+
+#### 5.1 Configuration 1: Floating Ground (No Connection Between Signal Ground and Chip Ground)
+
+**Phenomenon**: ADC output data fluctuates violently with no stable effective values.
+
+**Principle Analysis**: When the signal ground is floating, the common-mode voltage is in an undefined state. External electromagnetic interference easily couples into the input pins, causing the absolute voltages of AN1 and AN2 pins to drift randomly. Although the differential voltage theoretically is 1V, the ADC internal circuitry cannot lock onto an effective differential value, ultimately outputting noise data.
+
+#### 5.2 Configuration 2: Signal Ground Connected to Chip Ground (GND)
+
+**Phenomenon**: Can stably measure positive differential voltages, but cannot measure negative differential voltages.
+
+**Data Analysis**: Test data under different signal source settings are shown in Table 2.
+
+**Table 2: Test Data with Signal Ground Connected to GND**
+
+| Signal Source Setting | Signal+ to Ground Voltage (V) | Signal- to Ground Voltage (V) | Differential Voltage (V) | Common-Mode Voltage (V) | Measurement Result |
+|------------------------|-------------------------------|-------------------------------|--------------------------|--------------------------|---------------------|
+| +1.0V                  | 1.0                           | 0                             | 1                        | 0.5                      | Normal              |
+| +0.2V                  | 0.2                           | 0                             | 0.2                      | 0.1                      | Out of Range        |
+| -1.0V                  | -1.0                          | 0                             | -1                       | -0.5                     | Out of Range        |
+
+**Problem Analysis**: When measuring negative differential voltages, the signal+ pin voltage becomes negative, exceeding the ADC input voltage range (although the device allows a certain range of input swing, provided that the absolute voltages of each input pin and the common-mode voltage simultaneously meet the limit conditions), leading to conversion failure.
+
+#### 5.3 Configuration 3: Signal Ground Connected to Chip VCM Pin
+
+**Phenomenon**: Both positive and negative differential voltages can be measured with high precision.
+
+**Prerequisites**: The VCM pin outputs a stable voltage with a typical value of 1.25V (±5% tolerance). This voltage remains constant relative to the chip ground. The external signal source ground is connected directly to the VCM pin.
+
+**Data Analysis**: Test data under different signal source settings are shown in Table 3.
+
+**Table 3: Test Data with Signal Ground Connected to VCM Pin**
+
+| Signal Source Setting | Signal- to Ground Voltage (V) | Signal+ to Ground Voltage (V) | Differential Voltage (V) | Common-Mode Voltage (V) | Measurement Result |
+|------------------------|-------------------------------|-------------------------------|--------------------------|--------------------------|---------------------|
+| +1.0V                  | 1.25                          | 2.25                          | 1                        | 1.75                     | Normal              |
+| -1.0V                  | 1.25                          | 0.25                          | -1                       | 0.75                     | Normal              |
+
+**Advantage Analysis**: The measured signal fluctuates around the VCM pin voltage (1.25V). Whether inputting positive or negative differential voltages, the absolute voltages of signal+ and signal- pins are both within the ADC's allowable input range, achieving true bipolar measurement capability.
+
+### 6 Summary
+
+The input characteristics of a differential ADC are jointly determined by the absolute voltage range of individual pins and the differential voltage range between pins. A comparison of measurement capabilities for different reference methods is shown in Table 4.
+
+**Table 4: Comparison of Measurement Capabilities for Different Reference Methods**
+
+| Reference Method       | Measurement Capability       | Technical Description                                                                 |
+|------------------------|------------------------------|---------------------------------------------------------------------------------------|
+| Ground reference (Configuration 2) | Can only measure positive differential voltages | When measuring negative voltages, the signal+ pin voltage is below 0V, exceeding the ADC input range |
+| VCM reference (Configuration 3)   | Can measure positive and negative differential voltages | Signal fluctuates around the VCM pin voltage, always meeting common-mode voltage range requirements |
+
+**Application Recommendation**: For scenarios requiring bipolar voltage measurement such as bridge sensors and audio signals, the VCM pin must be used as the reference ground to ensure measurement accuracy and stability.
 
 
