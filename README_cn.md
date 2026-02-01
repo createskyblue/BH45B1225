@@ -1,4 +1,4 @@
-[English](README.md) | [简体中文](README_cn.md)
+[English](README.md)
 
 # BH45B1225 驱动
 
@@ -55,15 +55,60 @@ while (1) {
 
 ## API
 
+### 基础函数
 | 函数 | 功能 |
 |------|------|
-| `bh45b1225_init()` | 初始化 |
-| `bh45b1225_set_input_channel()` | 输入通道 |
-| `bh45b1225_set_pga_gain()` | 增益 (1~128) |
-| `bh45b1225_set_data_rate()` | 速率 (5~1600Hz) |
-| `bh45b1225_set_dac_output()` | DAC 输出 |
-| `bh45b1225_reset_adc_filter()` | 复位滤波器 |
-| `bh45b1225_start_conversion()` | 启动 ADC |
-| `bh45b1225_read_data()` | 读数据 |
-| `bh45b1225_clear_eoc()` | 清 EOC 标志 |
-| `bh45b1225_code_to_voltage()` | 转电压输出 |
+| `bh45b1225_init()` | 初始化设备 |
+| `bh45b1225_set_vcm()` | 使能/除能 VCM |
+| `bh45b1225_set_vref_source()` | 设置 ADC 参考电压源 (内部/外部) |
+
+### 输入与增益配置
+| 函数 | 功能 |
+|------|------|
+| `bh45b1225_set_input_channel()` | 配置输入通道 (IN1/IN2) |
+| `bh45b1225_set_inx_polarity()` | 通过 INX 位交换输入极性 |
+| `bh45b1225_set_pga_gain()` | 设置 PGA 总增益 (1~128) |
+
+### 时钟与振荡器
+| 函数 | 功能 |
+|------|------|
+| `bh45b1225_enable_hirc()` | 使能 HIRC 内部振荡器 |
+| `bh45b1225_check_hirc_stable()` | 检查 HIRC 振荡器是否稳定 |
+
+### ADC 配置
+| 函数 | 功能 |
+|------|------|
+| `bh45b1225_set_data_rate()` | 设置 ADC 输出数据速率 (5~1600Hz) |
+| `bh45b1225_set_adc_mode()` | 设置 ADC 工作模式 (正常/休眠/掉电) |
+| `bh45b1225_set_vref_buffer()` | 使能/除能参考电压缓存 |
+
+### ADC 操作
+| 函数 | 功能 |
+|------|------|
+| `bh45b1225_reset_adc_filter()` | 复位 ADC 滤波器 |
+| `bh45b1225_set_data_latch()` | 使能/除能数据锁存 |
+| `bh45b1225_start_conversion()` | 启动 ADC 转换 |
+| `bh45b1225_check_eoc()` | 检查转换是否完成 |
+| `bh45b1225_read_data()` | 读取 24 位 ADC 结果 |
+| `bh45b1225_clear_eoc()` | 清除 EOC 标志 |
+
+### DAC 操作
+| 函数 | 功能 |
+|------|------|
+| `bh45b1225_set_dac_enable()` | 使能/除能 DAC |
+| `bh45b1225_set_dac_vref()` | 设置 DAC 参考电压源 (AVDD/VCM) |
+| `bh45b1225_set_dac_output()` | 设置 DAC 输出值 (12 位, 0-4095) |
+
+### 工具函数
+| 函数 | 功能 |
+|------|------|
+| `bh45b1225_code_to_voltage()` | 将 ADC 码转换为电压 |
+
+### 高级配置（谨慎使用）
+| 函数 | 功能 |
+|------|------|
+| `bh45b1225_set_pwrc_opt()` | 设置 PWRC 优化位 |
+| `bh45b1225_set_adcte()` | 设置 ADC 测试配置寄存器 |
+| `bh45b1225_set_filter_mode()` | 设置 ADC 滤波器模式 (FLMS) |
+| `bh45b1225_set_osr()` | 设置 ADC 过采样率 (OSR) |
+| `bh45b1225_set_clock_div()` | 设置 ADC 时钟分频 |

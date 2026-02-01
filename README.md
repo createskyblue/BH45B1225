@@ -1,4 +1,4 @@
-[English](README.md) | [简体中文](README_cn.md)
+[简体中文](README_cn.md)
 
 # BH45B1225 Driver
 
@@ -54,15 +54,60 @@ while (1) {
 
 ## API
 
+### Basic Functions
 | Function | Description |
 |----------|-------------|
-| `bh45b1225_init()` | Initialization |
-| `bh45b1225_set_input_channel()` | Input channel selection |
-| `bh45b1225_set_pga_gain()` | Gain setting (1\~128) |
-| `bh45b1225_set_data_rate()` | Data rate (5\~1600Hz) |
-| `bh45b1225_set_dac_output()` | DAC output |
-| `bh45b1225_reset_adc_filter()` | Reset filter |
-| `bh45b1225_start_conversion()` | Start ADC |
-| `bh45b1225_read_data()` | Read data |
+| `bh45b1225_init()` | Initialize device |
+| `bh45b1225_set_vcm()` | Enable/disable VCM |
+| `bh45b1225_set_vref_source()` | Set ADC reference voltage source (internal/external) |
+
+### Input & Gain Configuration
+| Function | Description |
+|----------|-------------|
+| `bh45b1225_set_input_channel()` | Configure input channels (IN1/IN2) |
+| `bh45b1225_set_inx_polarity()` | Set input polarity via INX bits |
+| `bh45b1225_set_pga_gain()` | Set PGA total gain (1~128) |
+
+### Clock & Oscillator
+| Function | Description |
+|----------|-------------|
+| `bh45b1225_enable_hirc()` | Enable HIRC internal oscillator |
+| `bh45b1225_check_hirc_stable()` | Check if HIRC oscillator is stable |
+
+### ADC Configuration
+| Function | Description |
+|----------|-------------|
+| `bh45b1225_set_data_rate()` | Set ADC output data rate (5~1600Hz) |
+| `bh45b1225_set_adc_mode()` | Set ADC work mode (normal/sleep/poweroff) |
+| `bh45b1225_set_vref_buffer()` | Enable/disable reference voltage buffers |
+
+### ADC Operations
+| Function | Description |
+|----------|-------------|
+| `bh45b1225_reset_adc_filter()` | Reset ADC filter |
+| `bh45b1225_set_data_latch()` | Enable/disable data latch |
+| `bh45b1225_start_conversion()` | Start ADC conversion |
+| `bh45b1225_check_eoc()` | Check if conversion is complete |
+| `bh45b1225_read_data()` | Read 24-bit ADC result |
 | `bh45b1225_clear_eoc()` | Clear EOC flag |
-| `bh45b1225_code_to_voltage()` | Convert to voltage |
+
+### DAC Operations
+| Function | Description |
+|----------|-------------|
+| `bh45b1225_set_dac_enable()` | Enable/disable DAC |
+| `bh45b1225_set_dac_vref()` | Set DAC reference voltage source (AVDD/VCM) |
+| `bh45b1225_set_dac_output()` | Set DAC output value (12-bit, 0-4095) |
+
+### Utility Functions
+| Function | Description |
+|----------|-------------|
+| `bh45b1225_code_to_voltage()` | Convert ADC code to voltage |
+
+### Advanced Configuration (Use with caution)
+| Function | Description |
+|----------|-------------|
+| `bh45b1225_set_pwrc_opt()` | Set PWRC optimization bits |
+| `bh45b1225_set_adcte()` | Set ADC test configuration register |
+| `bh45b1225_set_filter_mode()` | Set ADC filter mode (FLMS) |
+| `bh45b1225_set_osr()` | Set ADC oversampling rate (OSR) |
+| `bh45b1225_set_clock_div()` | Set ADC clock division |
