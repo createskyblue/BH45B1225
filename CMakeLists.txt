@@ -1,23 +1,9 @@
-cmake_minimum_required(VERSION 3.10)
-
-project(bh45b1225 VERSION 1.0.0 LANGUAGES C)
-
-# 库
-add_library(bh45b1225 STATIC bh45b1225.c)
-
-# 包含目录
-target_include_directories(bh45b1225 PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
+# BH45B1225 驱动库
+add_library(bh45b1225 STATIC
+    bh45b1225.c
 )
 
-# 别名目标
-add_library(BH45B1225::bh45b1225 ALIAS bh45b1225)
-
-# 安装
-include(GNUInstallDirs)
-install(TARGETS bh45b1225
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+# 添加头文件包含目录
+target_include_directories(bh45b1225 PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
 )

@@ -26,6 +26,15 @@ extern "C" {
 #define BH45B1225_REG_ADCR1          0x08    // ADC控制寄存器1
 #define BH45B1225_REG_ADCS           0x09    // ADC采样配置
 #define BH45B1225_REG_ADCTE          0x0A    // ADC测试配置
+#define BH45B1225_REG_HIRCC          0x11    // 内置晶振配置
+
+/* =========================== 常用系统时钟频率 =========================== */
+#define BH45B1225_SYSCLK_4P9152MHZ   4915200UL   // 4.9152MHz 常用晶振频率
+#define BH45B1225_SYSCLK_8MHZ        8000000UL   // 8MHz
+#define BH45B1225_SYSCLK_12MHZ       12000000UL  // 12MHz
+#define BH45B1225_SYSCLK_16MHZ       16000000UL  // 16MHz
+#define BH45B1225_SYSCLK_24MHZ       24000000UL  // 24MHz
+#define BH45B1225_SYSCLK_32MHZ       32000000UL  // 32MHz
 
 /* =========================== PWRC寄存器 (0x00) 位定义 =========================== */
 #define BH45B1225_PWRC_VCMEN         0x80    // BIT7: VCM使能
@@ -106,10 +115,19 @@ typedef enum {
 #define BH45B1225_ADCR0_VREFS       0x01    // BIT0: 参考电压选择 (0=内部, 1=外部)
 
 /* =========================== ADCR1寄存器 (0x08) 位定义 =========================== */
-#define BH45B1225_ADCR1_EOC          0x02    // BIT1: 转换结束标志
-#define BH45B1225_ADCR1_VRBUFP      0x10    // BIT4: 正参考电压缓存
-#define BH45B1225_ADCR1_VRBUFN      0x08    // BIT3: 负参考电压缓存
+#define BH45B1225_ADCR1_FLMS2        0x80    // BIT7: ADC时钟分频比选择位2
+#define BH45B1225_ADCR1_FLMS1        0x40    // BIT6: ADC时钟分频比选择位1
+#define BH45B1225_ADCR1_FLMS0        0x20    // BIT5: ADC时钟分频比选择位0
+#define BH45B1225_ADCR1_VRBUFN      0x10    // BIT4: 负参考电压缓存
+#define BH45B1225_ADCR1_VRBUFP      0x08    // BIT3: 正参考电压缓存
 #define BH45B1225_ADCR1_ADCDL       0x04    // BIT2: 数据锁存
+#define BH45B1225_ADCR1_EOC          0x02    // BIT1: 转换结束标志
+
+// FLMS滤波器模式 - 必须与PWRC的特性优化位匹配
+typedef enum {
+    BH45B1225_FLMS_DIV30 = 0,       // FLMS=000, fADCK=fMCLK/30, PWRC opt=0x48
+    BH45B1225_FLMS_DIV12 = 2        // FLMS=010, fADCK=fMCLK/12, PWRC opt=0x3C
+} bh45b1225_flms_t;
 
 /* =========================== ADCS寄存器 (0x09) 位定义 =========================== */
 #define BH45B1225_ADCS_ADCK_MASK     0x1F    // BIT4~BIT0: ADC时钟分频选择
@@ -127,10 +145,11 @@ typedef enum {
 
 /**
  * @brief I2C读写函数指针类型 - 用于硬件解耦
+ * @note write_func 的 data 必须包含 [寄存器地址][数据...]
  */
-typedef int (*bh45b1225_i2c_write_t)(uint8_t dev_addr, uint8_t reg, const uint8_t *data, uint16_t len);
-typedef int (*bh45b1225_i2c_read_t)(uint8_t dev_addr, uint8_t reg, uint8_t *data, uint16_t len);
-
+typedef int (*bh45b1225_i2c_write_t)(uint8_t dev_addr_func, const uint8_t *data, uint16_t len);
+typedef int (*bh45b1225_i2c_read_t)(uint8_t dev_addr_func, uint8_t reg, uint8_t *data, uint16_t len);
+typedef void (*bh45b1225_delay_t)(uint32_t ms);
 /**
  * @brief 模拟输入通道
  */
@@ -197,12 +216,39 @@ typedef enum {
 } bh45b1225_adc_mode_t;
 
 /**
+ * @brief 输出速率查找表
+ */
+typedef enum {
+    BH45B1225_DR_5HZ,
+    BH45B1225_DR_10HZ,
+    BH45B1225_DR_20HZ,
+    BH45B1225_DR_25HZ,
+    BH45B1225_DR_40HZ,
+    BH45B1225_DR_50HZ,
+    BH45B1225_DR_100HZ,
+    BH45B1225_DR_400HZ,
+    BH45B1225_DR_1600HZ //这个跑不满，有信令开销
+} bh45b1225_data_rate_t;
+
+
+typedef struct {
+    bh45b1225_data_rate_t rate;
+    uint8_t adck;
+    bh45b1225_osr_t osr;
+    bh45b1225_flms_t flms;
+} bh45b1225_rate_cfg_t;
+
+extern const bh45b1225_rate_cfg_t bh45b1225_rate_table[];
+
+
+/**
  * @brief BH45B1225设备对象结构体
  */
 typedef struct bh45b1225_dev_t {
-    uint8_t dev_addr;                           // I2C设备地址
-    bh45b1225_i2c_write_t i2c_write;            // I2C写函数指针
+    uint8_t dev_addr_func;                           // I2C设备地址
+    bh45b1225_i2c_write_t i2c_write_func;            // I2C写函数指针
     bh45b1225_i2c_read_t  i2c_read;             // I2C读函数指针
+    bh45b1225_delay_t delay_func;                    // 延时函数指针
 
     // 私有方法
     int (*write_reg)(struct bh45b1225_dev_t *dev, uint8_t reg, uint8_t value);
@@ -214,27 +260,55 @@ typedef struct bh45b1225_dev_t {
 /**
  * @brief 初始化BH45B1225设备对象
  * @param dev 设备对象指针
- * @param dev_addr I2C设备地址 (7位地址)
- * @param write_func I2C写函数指针
+ * @param dev_addr_func I2C设备地址 (8位地址，包含读写位)
+ * @param write_func I2C写函数指针，data格式: [寄存器地址][数据...]
  * @param read_func I2C读函数指针
  * @return 0=成功, <0=失败
  */
-int bh45b1225_init(bh45b1225_dev_t *dev, uint8_t dev_addr,
+int bh45b1225_init(bh45b1225_dev_t *dev, uint8_t dev_addr_func,
                    bh45b1225_i2c_write_t write_func,
-                   bh45b1225_i2c_read_t read_func);
+                   bh45b1225_i2c_read_t read_func,
+                   bh45b1225_delay_t delay_func);
 
 /**
- * @brief 反初始化设备对象
- */
-void bh45b1225_deinit(bh45b1225_dev_t *dev);
-
-/**
- * @brief 设置PGA总增益
+ * @brief 使能VCM
  * @param dev 设备对象指针
- * @param gain 总增益 (1, 2, 4, 8, 16, 32, 64, 128)
+ * @param enable true=使能, false=除能
  * @return 0=成功, <0=失败
  */
-int bh45b1225_set_pga_gain(bh45b1225_dev_t *dev, bh45b1225_total_gain_t gain);
+int bh45b1225_set_vcm(bh45b1225_dev_t *dev, bool enable);
+
+/**
+ * @brief 设置参考电压源
+ * @param dev 设备对象指针
+ * @param vref 参考电压类型 (内部/外部)
+ * @return 0=成功, <0=失败
+ */
+int bh45b1225_set_vref_source(bh45b1225_dev_t *dev, bh45b1225_vref_t vref);
+
+/**
+ * @brief 设置DAC参考电压源
+ * @param dev 设备对象指针
+ * @param vref DAC参考电压类型
+ * @return 0=成功, <0=失败
+ */
+int bh45b1225_set_dac_vref(bh45b1225_dev_t *dev, bh45b1225_dac_vref_t vref);
+/**
+ * @brief 设置DAC输出值
+ * @param dev 设备对象指针
+ * @param value 12位DAC值 (0-4095)
+ * @return 0=成功, <0=失败
+ * @note 必须先写DAL再写DAH才会生效
+ */
+int bh45b1225_set_dac_output(bh45b1225_dev_t *dev, uint16_t value);
+
+/**
+ * @brief 使能/除能DAC
+ * @param dev 设备对象指针
+ * @param enable true=使能, false=除能
+ * @return 0=成功, <0=失败
+ */
+int bh45b1225_set_dac_enable(bh45b1225_dev_t *dev, bool enable);
 
 /**
  * @brief 配置输入通道
@@ -256,13 +330,72 @@ int bh45b1225_set_input_channel(bh45b1225_dev_t *dev,
  */
 int bh45b1225_set_inx_polarity(bh45b1225_dev_t *dev, uint8_t inx_value);
 
+
 /**
- * @brief 使能VCM
+ * @brief 设置PGA总增益
  * @param dev 设备对象指针
- * @param enable true=使能, false=除能
+ * @param gain 总增益 (1, 2, 4, 8, 16, 32, 64, 128)
  * @return 0=成功, <0=失败
  */
-int bh45b1225_set_vcm(bh45b1225_dev_t *dev, bool enable);
+int bh45b1225_set_pga_gain(bh45b1225_dev_t *dev, bh45b1225_total_gain_t gain);
+
+/**
+ * @brief 使能HIRC内部高速振荡器
+ * @param dev 设备对象指针
+ * @return 0=成功, <0=失败
+ * @note 使能后需要等待至少16个系统时钟让振荡器稳定
+ */
+int bh45b1225_enable_hirc(bh45b1225_dev_t *dev);
+
+/**
+ * @brief 检查HIRC振荡器是否稳定
+ * @param dev 设备对象指针
+ * @param stable 稳定标志 (true=稳定, false=未稳定)
+ * @return 0=成功, <0=失败
+ */
+int bh45b1225_check_hirc_stable(bh45b1225_dev_t *dev, bool *stable);
+
+/**
+ * @brief 设置ADC输出数据速率
+ */
+int bh45b1225_set_data_rate(
+    bh45b1225_dev_t *dev,
+    bh45b1225_data_rate_t rate
+);
+
+/**
+ * @brief 设置ADC工作模式
+ * @param dev 设备对象指针
+ * @param mode 工作模式 (正常/休眠/掉电)
+ * @return 0=成功, <0=失败
+ */
+int bh45b1225_set_adc_mode(bh45b1225_dev_t *dev, bh45b1225_adc_mode_t mode);
+
+/**
+ * @brief 使能/除能参考电压缓存
+ * @param dev 设备对象指针
+ * @param vrefp_buf 使能正参考电压缓存
+ * @param vrefn_buf 使能负参考电压缓存
+ * @return 0=成功, <0=失败
+ */
+int bh45b1225_set_vref_buffer(bh45b1225_dev_t *dev, bool vrefp_buf, bool vrefn_buf);
+
+/**
+ * @brief 复位ADC滤波器
+ * @param dev 设备对象指针
+ * @return 0=成功, <0=失败
+ * @note 复位后当前转换数据失效，需要重新等待转换完成；改变ADC设置后应该执行复位
+ */
+int bh45b1225_reset_adc_filter(bh45b1225_dev_t *dev);
+
+/**
+ * @brief 使能/除能数据锁存
+ * @param dev 设备对象指针
+ * @param enable true=锁存数据, false=正常更新
+ * @return 0=成功, <0=失败
+ * @note 锁存后读取数据不会被更新，读取完成后建议关闭锁存
+ */
+int bh45b1225_set_data_latch(bh45b1225_dev_t *dev, bool enable);
 
 /**
  * @brief 启动ADC转换
@@ -270,14 +403,6 @@ int bh45b1225_set_vcm(bh45b1225_dev_t *dev, bool enable);
  * @return 0=成功, <0=失败
  */
 int bh45b1225_start_conversion(bh45b1225_dev_t *dev);
-
-/**
- * @brief 读取24位ADC转换结果
- * @param dev 设备对象指针
- * @param data 存储读取数据的指针 (32位有符号值)
- * @return 0=成功, <0=失败
- */
-int bh45b1225_read_data(bh45b1225_dev_t *dev, int32_t *data);
 
 /**
  * @brief 检查ADC转换是否完成
@@ -288,6 +413,14 @@ int bh45b1225_read_data(bh45b1225_dev_t *dev, int32_t *data);
 int bh45b1225_check_eoc(bh45b1225_dev_t *dev, bool *complete);
 
 /**
+ * @brief 读取24位ADC转换结果
+ * @param dev 设备对象指针
+ * @param data 存储读取数据的指针 (32位有符号值)
+ * @return 0=成功, <0=失败
+ */
+int bh45b1225_read_data(bh45b1225_dev_t *dev, int32_t *data);
+
+/**
  * @brief 将ADC码转换为电压值
  * @param adc_code 24位ADC码 (有符号)
  * @param vref 参考电压
@@ -295,6 +428,51 @@ int bh45b1225_check_eoc(bh45b1225_dev_t *dev, bool *complete);
  * @return 电压值 (与vref单位相同)
  */
 float bh45b1225_code_to_voltage(int32_t adc_code, float vref, float total_gain);
+
+/**
+ * @brief 清除EOC标志
+ * @param dev 设备对象指针
+ * @return 0=成功, <0=失败
+ */
+int bh45b1225_clear_eoc(bh45b1225_dev_t *dev);
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////
+//
+// 下面设置一般不需要动,除非你知道你正在干什么
+//
+/////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief 设置PWRC寄存器的特性优化位
+ * @param dev 设备对象指针
+ * @param opt_bits 特性优化位 (BIT6~BIT0, 0x48对应FLMS=000)
+ * @return 0=成功, <0=失败
+ * @note 通常设置为0x48 (010_1000B)
+ */
+int bh45b1225_set_pwrc_opt(bh45b1225_dev_t *dev, uint8_t opt_bits);
+
+/**
+ * @brief 设置ADCTE寄存器（ADC测试配置）
+ * @param dev 设备对象指针
+ * @param value ADCTE值（通常为0xE7）
+ * @return 0=成功, <0=失败
+ */
+int bh45b1225_set_adcte(bh45b1225_dev_t *dev, uint8_t value);
+
+/**
+ * @brief 设置ADC滤波器模式
+ * @param dev 设备对象指针
+ * @param flms_mode 滤波器模式 (FLMS_DIV30 或 FLMS_DIV12)
+ * @return 0=成功, <0=失败
+ * @note 此函数会同步更新 PWRC 寄存器的特性优化位以保持配置一致性
+ *       - FLMS_DIV30: fADCK=fMCLK/30, PWRC opt=0x48
+ *       - FLMS_DIV12: fADCK=fMCLK/12, PWRC opt=0x3C
+ */
+int bh45b1225_set_filter_mode(bh45b1225_dev_t *dev, bh45b1225_flms_t flms_mode);
 
 /**
  * @brief 设置ADC过采样率(OSR)
@@ -312,87 +490,6 @@ int bh45b1225_set_osr(bh45b1225_dev_t *dev, bh45b1225_osr_t osr);
  */
 int bh45b1225_set_clock_div(bh45b1225_dev_t *dev, uint8_t div_val);
 
-/**
- * @brief 设置参考电压源
- * @param dev 设备对象指针
- * @param vref 参考电压类型 (内部/外部)
- * @return 0=成功, <0=失败
- */
-int bh45b1225_set_vref_source(bh45b1225_dev_t *dev, bh45b1225_vref_t vref);
-
-/**
- * @brief 设置DAC输出值
- * @param dev 设备对象指针
- * @param value 12位DAC值 (0-4095)
- * @return 0=成功, <0=失败
- * @note 必须先写DAL再写DAH才会生效
- */
-int bh45b1225_set_dac_output(bh45b1225_dev_t *dev, uint16_t value);
-
-/**
- * @brief 使能/除能DAC
- * @param dev 设备对象指针
- * @param enable true=使能, false=除能
- * @return 0=成功, <0=失败
- */
-int bh45b1225_set_dac_enable(bh45b1225_dev_t *dev, bool enable);
-
-/**
- * @brief 设置DAC参考电压源
- * @param dev 设备对象指针
- * @param vref DAC参考电压类型
- * @return 0=成功, <0=失败
- */
-int bh45b1225_set_dac_vref(bh45b1225_dev_t *dev, bh45b1225_dac_vref_t vref);
-
-/**
- * @brief 配置温度传感器通道
- * @param dev 设备对象指针
- * @return 0=成功, <0=失败
- * @note 将CHSP设为VTSP，CHSN设为VTSN
- */
-int bh45b1225_config_temp_sensor(bh45b1225_dev_t *dev);
-
-/**
- * @brief 读取温度传感器ADC值并转换为温度
- * @param dev 设备对象指针
- * @param temperature 存储温度值的指针 (单位: ℃)
- * @return 0=成功, <0=失败
- * @note 温度传感器系数: 175μV/℃，需先调用bh45b1225_config_temp_sensor配置通道
- */
-int bh45b1225_read_temperature(bh45b1225_dev_t *dev, float *temperature);
-
-/**
- * @brief 设置ADC工作模式
- * @param dev 设备对象指针
- * @param mode 工作模式 (正常/休眠/掉电)
- * @return 0=成功, <0=失败
- */
-int bh45b1225_set_adc_mode(bh45b1225_dev_t *dev, bh45b1225_adc_mode_t mode);
-
-/**
- * @brief 复位ADC滤波器
- * @param dev 设备对象指针
- * @return 0=成功, <0=失败
- * @note 复位后当前转换数据失效，需要重新等待转换完成
- */
-int bh45b1225_reset_adc_filter(bh45b1225_dev_t *dev);
-
-/**
- * @brief 使能/除能数据锁存
- * @param dev 设备对象指针
- * @param enable true=锁存数据, false=正常更新
- * @return 0=成功, <0=失败
- * @note 锁存后读取数据不会被更新，读取完成后建议关闭锁存
- */
-int bh45b1225_set_data_latch(bh45b1225_dev_t *dev, bool enable);
-
-/**
- * @brief 清除EOC标志
- * @param dev 设备对象指针
- * @return 0=成功, <0=失败
- */
-int bh45b1225_clear_eoc(bh45b1225_dev_t *dev);
 
 #ifdef __cplusplus
 }
