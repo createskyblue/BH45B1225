@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(chcp 65001)",
-      "Bash(markitdown:*)",
-      "Bash(Out-File -Encoding UTF8 \"a:\\\\BH45B1225\\\\BH45B1225手册.md\")"
-    ]
-  }
-}
