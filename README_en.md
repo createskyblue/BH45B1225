@@ -238,10 +238,12 @@ Test conditions: AVDD = 3.3V, common-mode voltage effective range 0.4V ~ 2.35V; 
 
 **Table 3: Test Data with Signal Ground Connected to VCM Pin**
 
-| Signal Source Setting | Signal- to Ground Voltage (V) | Signal+ to Ground Voltage (V) | Differential Voltage (V) | Common-Mode Voltage (V) | Measurement Result |
+| Signal Source Setting | Signal+ to Ground Voltage (V) | Signal- to Ground Voltage (V) | Differential Voltage (V) | Common-Mode Voltage (V) | Measurement Result |
 |------------------------|-------------------------------|-------------------------------|--------------------------|--------------------------|---------------------|
-| +1.0V                  | 1.25                          | 2.25                          | 1                        | 1.75                     | Normal              |
-| -1.0V                  | 1.25                          | 0.25                          | -1                       | 0.75                     | Normal              |
+| +1.0V                  | 2.25                          | 1.25                          | 1                        | 1.75                     | Normal              |
+| -1.0V                  | 0.25                          | 1.25                          | -1                       | 0.75                     | Normal              |
+
+
 
 **Advantage Analysis**: The measured signal fluctuates around the VCM pin voltage (1.25V). Whether inputting positive or negative differential voltages, the absolute voltages of signal+ and signal- pins are both within the ADC's allowable input range, achieving true bipolar measurement capability.
 
