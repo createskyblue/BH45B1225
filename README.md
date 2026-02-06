@@ -33,8 +33,8 @@ void bh45b1225_delay_ms(uint32_t ms) {
 ```c
 bh45b1225_dev_t sensor;
 
-// 初始化（8位地址，如 0xD0）
-bh45b1225_init(&sensor, 0xD0, bh45b1225_i2c_write, bh45b1225_i2c_read, bh45b1225_delay_ms);
+// 初始化
+bh45b1225_init(&sensor, 0xA0, bh45b1225_i2c_write, bh45b1225_i2c_read, bh45b1225_delay_ms);
 
 // 配置差分输入 (AN0-AN1)
 bh45b1225_set_input_channel(&sensor, BH45B1225_IN1_AN0, BH45B1225_IN2_AN1);
@@ -60,14 +60,14 @@ while (1) {
 | 函数 | 功能 |
 |------|------|
 | `bh45b1225_init()` | 初始化设备 |
-| `bh45b1225_set_vcm()` | 使能/除能 VCM |
+| `bh45b1225_set_vcm()` | 使能/禁用 VCM |
 | `bh45b1225_set_vref_source()` | 设置 ADC 参考电压源 (内部/外部) |
 
 ### 输入与增益配置
 | 函数 | 功能 |
 |------|------|
 | `bh45b1225_set_input_channel()` | 配置输入通道 (IN1/IN2) |
-| `bh45b1225_set_inx_polarity()` | 通过 INX 位交换输入极性 |
+| `bh45b1225_set_inx_polarity()` | 反转PGA差分输入通道 |
 | `bh45b1225_set_pga_gain()` | 设置 PGA 总增益 (1~128) |
 
 ### 时钟与振荡器
@@ -81,13 +81,13 @@ while (1) {
 |------|------|
 | `bh45b1225_set_data_rate()` | 设置 ADC 输出数据速率 (5~1600Hz) |
 | `bh45b1225_set_adc_mode()` | 设置 ADC 工作模式 (正常/休眠/掉电) |
-| `bh45b1225_set_vref_buffer()` | 使能/除能参考电压缓存 |
+| `bh45b1225_set_vref_buffer()` | 使能/禁用参考电压缓存 |
 
 ### ADC 操作
 | 函数 | 功能 |
 |------|------|
 | `bh45b1225_reset_adc_filter()` | 复位 ADC 滤波器 |
-| `bh45b1225_set_data_latch()` | 使能/除能数据锁存 |
+| `bh45b1225_set_data_latch()` | 使能/禁用数据锁存 |
 | `bh45b1225_start_conversion()` | 启动 ADC 转换 |
 | `bh45b1225_check_eoc()` | 检查转换是否完成 |
 | `bh45b1225_read_data()` | 读取 24 位 ADC 结果 |
@@ -96,7 +96,7 @@ while (1) {
 ### DAC 操作
 | 函数 | 功能 |
 |------|------|
-| `bh45b1225_set_dac_enable()` | 使能/除能 DAC |
+| `bh45b1225_set_dac_enable()` | 使能/禁用 DAC |
 | `bh45b1225_set_dac_vref()` | 设置 DAC 参考电压源 (AVDD/VCM) |
 | `bh45b1225_set_dac_output()` | 设置 DAC 输出值 (12 位, 0-4095) |
 

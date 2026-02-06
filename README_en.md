@@ -33,8 +33,8 @@ void bh45b1225_delay_ms(uint32_t ms) {
 ```c
 bh45b1225_dev_t sensor;
 
-// Initialize (8-bit address, e.g. 0xD0)
-bh45b1225_init(&sensor, 0xD0, bh45b1225_i2c_write, bh45b1225_i2c_read, bh45b1225_delay_ms);
+// Initialize
+bh45b1225_init(&sensor, 0xA0, bh45b1225_i2c_write, bh45b1225_i2c_read, bh45b1225_delay_ms);
 
 // Configure differential input (AN0-AN1)
 bh45b1225_set_input_channel(&sensor, BH45B1225_IN1_AN0, BH45B1225_IN2_AN1);
